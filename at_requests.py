@@ -1,0 +1,152 @@
+import requests
+import os
+import json
+from dotenv import load_dotenv, dotenv_values
+
+load_dotenv()
+
+base_url = 'https://webservices14.autotask.net/ATServicesRest/V1.0/'
+today = "2019-06-01"
+range_end = "2019-06-30"
+
+headers = {
+    'accept': 'application/json',
+    'Username': os.getenv("USERNAME"),
+    'Secret': os.getenv("SECRET"),
+    'APIIntegrationcode': os.getenv("APIINTEGRATIONCODE"),
+    'ContentType': 'application/json'
+}
+
+
+def get_service_calls(start_date, end_date):
+    service_call_body = {
+        "MaxRecords": 5,
+        "IncludeFields": [
+            "id",
+            "description",
+            "startDateTime",
+            "endDateTime",
+            "companyID",
+            "duration",
+            "lastModifiedDateTime",
+            "companylocationID",
+            "canceledDateTime",
+        ],
+        "Filter": [
+            {
+                "op": "gte",
+                "field": "startDateTime",
+                "value": start_date,
+            },
+            {
+                "op": "lte",
+                "field": "startDateTime",
+                "value": end_date,
+            }
+        ]
+    }
+
+    try:
+        response = requests.post(
+            base_url + 'ServiceCalls/query', headers=headers, json=service_call_body)
+        return response.json()['items']
+    except:
+        print('\nERROR RETRIEVING SERVICE CALLS\n')
+        return False
+
+
+# Get the ServiceCallTicket - note this is not the same as a Ticket, but a reference to that ticket and assigned resources
+# The ServiceCallTickets entity describes an Autotask ticket assigned to a service call
+def get_service_call_ticket(service_call_id):
+    body = {
+        "maxRecords": 0,
+        "includeFields": ["id", "serviceCallID", "ticketID"],
+        "filter": [
+            {
+                "op": "eq",
+                "field": "serviceCallID",
+                "value": service_call_id,
+            },
+        ]
+    }
+    try:
+        response = requests.post(
+            base_url + 'ServiceCallTickets/query', headers=headers, json=body)
+        return response.json()['items']
+    except:
+        print('\nERROR RETRIEVING SERVICE CALL TICKETS\n')
+        return False
+
+
+# Get Resources assinged to a Service Call
+# https://ww1.autotask.net/help/developerhelp/Content/APIs/REST/Entities/ServiceCallTicketResourceEntity.htm
+# takes the id field of the ServiceCallTicketResources entity
+def get_service_call_resources(service_call_ticket_id):
+    body = {
+        "maxRecords": 0,
+        "includeFields": ["resourceID"],
+        "filter": [
+            {
+                "op": "eq",
+                "field": "serviceCallTicketID",
+                "value": service_call_ticket_id,
+            },
+        ]
+    }
+    # try:
+    response = requests.post(
+        base_url + 'ServiceCallTicketResources/query', headers=headers, json=body)
+    return response.json()['items']
+    # except:
+    #     print('\nERROR RETRIEVING SERVICE CALL TICKET RESOURCES\n')
+    #     return False
+
+
+def get_company_data(company_id):
+    company_body = {
+        "maxRecords": 1,
+        "includeFields": [
+            "companyName",
+            "address1",
+            "address2",
+            "city",
+            "state",
+            "postalCode",
+        ],
+        "filter": [
+            {
+                "op": "eq",
+                "field": "id",
+                "value": company_id,
+            },
+        ],
+    }
+    try:
+        response = requests.post(
+            base_url + 'Companies/query', headers=headers, json=company_body)
+
+        return response.json()['items']  # saves as list
+    except:
+        print('\nERROR RETRIEVING COMPANY DATA\n')
+        return False
+
+
+def get_all_resources():
+    body = {
+        "maxRecords": 0,
+        "includeFields": ["id", "email"],
+        "filter": [
+            {
+                "op": "exist",
+                "field": "id",
+            },
+        ],
+    }
+    try:
+        response = requests.post(
+            base_url + 'Resources/query', headers=headers, json=body)
+
+        return response.json()['items']  # saves as list
+    except:
+        print('\nERROR RETRIEVING ALL RESOURCES\n')
+        return False
