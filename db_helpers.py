@@ -19,11 +19,6 @@ def get_column_names():
     return column_names
 
 
-# Example usage
-# column_names = get_column_names()
-# print("Column names:", column_names)
-
-
 def add_column(column_name, data_type):
     # Connect to the SQLite database
     conn = sqlite3.connect('data.db')
@@ -38,11 +33,7 @@ def add_column(column_name, data_type):
     conn.close()
 
 
-# Example usage
-# add_column("testing", "TEXT")
-
-
-def upsert_service_call(call_id, start_date_time, end_date_time, lastModifiedDateTime, description, company, resources, needs_sync):
+def update_db_service_calls(call_id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync):
     # Connect to the SQLite database
     conn = sqlite3.connect('data.db')
     cursor = conn.cursor()
@@ -54,28 +45,29 @@ def upsert_service_call(call_id, start_date_time, end_date_time, lastModifiedDat
     if existing_row is not None:
         # Row exists, update the row with new data
         cursor.execute('''UPDATE service_calls SET 
-                          start_date_time = ?,
-                          end_date_time = ?,
+                          startDateTime = ?,
+                          endDateTime = ?,
                           lastModifiedDateTime = ?,
                           description = ?,
                           company = ?,
+                          location = ?,
                           resources = ?,
                           needs_sync = ?
                           WHERE id = ?''',
-                       (start_date_time, end_date_time, lastModifiedDateTime, description, company, resources, needs_sync, call_id))
+                       (startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync, call_id))
     else:
         # Row does not exist, create a new row
         cursor.execute('''INSERT INTO service_calls 
-                          (id, start_date_time, end_date_time, lastModifiedDateTime, description, company, resources, needs_sync)
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?)''',
-                       (call_id, start_date_time, end_date_time, lastModifiedDateTime, description, company, resources, needs_sync))
+                          (id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync)
+                          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       (call_id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync))
 
     # Commit the changes and close the connection
     conn.commit()
     conn.close()
 
 # Example usage
-# upsert_service_call(1, '2023-06-17 10:00', '2023-06-17 11:00', 'Sample description', 'Company A', 'Resource 1', 0)
+# update_db_service_calls(1, '2023-06-17 10:00', '2023-06-17 11:00', 'Sample description', 'Company A', 'Resource 1', 0)
 
 
 def save_table_to_json(table_name, file_path):
@@ -152,17 +144,17 @@ def mark_rows_as_deleted(ids, start_date, end_date):
     end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
     # Iterate over the IDs and check the rows in the table
     for id in ids:
-        query = "SELECT id, start_date_time FROM service_calls WHERE id = ?"
+        query = "SELECT id, startDateTime FROM service_calls WHERE id = ?"
         cursor.execute(query, (id,))
         rows = cursor.fetchall()
 
         # Iterate over the rows and update the "deleted" column if the start date is within the range
         for row in rows:
-            row_id, start_date_time = row
-            parsed_start_date_time = datetime.strptime(
-                start_date_time, "%Y-%m-%dT%H:%M:%SZ").date()
+            row_id, startDateTime = row
+            parsed_startDateTime = datetime.strptime(
+                startDateTime, "%Y-%m-%dT%H:%M:%SZ").date()
 
-            if start_date <= parsed_start_date_time <= end_date:
+            if start_date <= parsed_startDateTime <= end_date:
                 update_query = "UPDATE service_calls SET deleted = 1 WHERE id = ?"
                 cursor.execute(update_query, (row_id,))
 

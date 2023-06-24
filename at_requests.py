@@ -150,3 +150,38 @@ def get_all_resources():
     except:
         print('\nERROR RETRIEVING ALL RESOURCES\n')
         return False
+
+# Get company location, takes the companyLocationID from the Service Call
+# https://ww1.autotask.net/help/developerhelp/content/apis/rest/entities/CompanyLocationsEntity.htm
+
+
+def get_company_location(location_id):
+    body = {
+        "maxRecords": 1,
+        "includeFields": [
+            "address1",
+            "address2",
+            "city",
+            "state",
+            "postalCode",
+            "phone",
+        ],
+        "filter": [
+            {
+                "op": "eq",
+                "field": 'id',
+                "value": location_id,
+            },
+        ],
+    }
+    try:
+        response = requests.post(
+            base_url + 'CompanyLocations/query', headers=headers, json=body)
+
+        print(response.json()['items'])
+        return response.json()['items']  # saves as list
+    except:
+        print('\nERROR RETRIEVING COMPANY LOCATION\n')
+        print(response.status_code, response.reason)
+        print(response.text)
+        return False

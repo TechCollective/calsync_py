@@ -6,14 +6,17 @@ from datetime import datetime, timedelta
 today = datetime.today().date()
 range_end = today + timedelta(days=365)
 yesterday = today - timedelta(days=1)
+today_str = today.strftime("%Y-%m-%d")
+range_end_str = range_end.strftime("%Y-%m-%d")
+yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 all_resources = get_all_resources()  # gets a list of all resources in AT
 
-today_testing = "2024-06-01"
-range_end_testing = "2024-06-30"
+today_str = "2024-06-01"
+range_end_str = "2024-06-30"
 
 # Get a list of service calls from AutoTask and from the database
-service_calls = get_service_calls(today_testing, range_end_testing)
+service_calls = get_service_calls(today_str, range_end_str)
 db_service_calls = fetch_table_rows("service_calls")
 print("all service calls in range: \n", service_calls)
 
@@ -26,11 +29,12 @@ modified_service_call_ids = compare_date_modified(
     db_service_calls, service_calls)
 print("modified service calls: ", modified_service_call_ids)
 
+# Create list of all new and modified service calls
 new_and_updated = filter_by_ids(
     service_calls, new_service_call_ids + modified_service_call_ids)
-print(new_and_updated)
 
-# updated_service_calls = service_calls.copy()
+
+# Get additional data from AutoTask for new and updated service calls
 for s in new_and_updated:
     # add resource emails:
     service_call_ticket_id = get_service_call_ticket(s['id'])[0]["id"]
@@ -49,23 +53,26 @@ for s in new_and_updated:
     company = company_id[0]['companyName']
     s.update({"company": company})
 
+    location = get_company_location(s['companyLocationID'])
 
-# print(updated_service_calls)
+    if len(location) > 0:
+        location = location[0]['address1'] + '\n' + location[0]['address2'] + '\n' + \
+            location[0]['city'] + '\n' + location[0]['state'] + \
+            '\n' + location[0]['postalCode']
+    else:
+        location = ''
 
-# add to database
-for s in new_and_updated:
+    print(location)
+    # Add to database:
     s_emails = result = ', '.join(s['emails'])
-    # upsert_service_call(call_id, start_date_time, end_date_time, description, company, resources, needs_sync
-    upsert_service_call(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
-                        s['description'], s['company'], s_emails, 1)
+    # update_db_service_calls(call_id, startDateTime, endDateTime, description, company, location, resources, needs_sync
+    update_db_service_calls(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
+                            s['description'], s['company'], location, s_emails, 1)
 
 
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
 deleted_service_call_ids = find_missing_ids(db_service_calls, service_calls)
 # then check to see if the date time is within range
-
-
 print("deleted: ", deleted_service_call_ids)
-
 mark_rows_as_deleted(deleted_service_call_ids,
-                     today_testing, range_end_testing)
+                     today_str, range_end_str)

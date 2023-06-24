@@ -8,8 +8,8 @@ cursor = conn.cursor()
 cursor.execute('''CREATE TABLE IF NOT EXISTS service_calls (
                     id INTEGER PRIMARY KEY,
                     lastModifiedDateTime TEXT,
-                    start_date_time TEXT,
-                    end_date_time TEXT,
+                    startDateTime TEXT,
+                    endDateTime TEXT,
                     description TEXT,
                     company TEXT,
                     resources TEXT,

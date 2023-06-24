@@ -3,3 +3,5 @@ todo.txt
 service_calls.json
 data.db
 .env
+/logs
+request_testing.py
