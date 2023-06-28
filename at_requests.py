@@ -2,12 +2,11 @@ import requests
 import os
 import json
 from dotenv import load_dotenv, dotenv_values
+from log import *
 
 load_dotenv()
 
 base_url = 'https://webservices14.autotask.net/ATServicesRest/V1.0/'
-today = "2019-06-01"
-range_end = "2019-06-30"
 
 headers = {
     'accept': 'application/json',
@@ -20,7 +19,7 @@ headers = {
 
 def get_service_calls(start_date, end_date):
     service_call_body = {
-        "MaxRecords": 5,
+        "MaxRecords": 0,
         "IncludeFields": [
             "id",
             "description",
@@ -51,7 +50,6 @@ def get_service_calls(start_date, end_date):
             base_url + 'ServiceCalls/query', headers=headers, json=service_call_body)
         return response.json()['items']
     except:
-        print('\nERROR RETRIEVING SERVICE CALLS\n')
         return False
 
 
@@ -75,7 +73,7 @@ def get_service_call_ticket(service_call_id):
         return response.json()['items']
     except:
         print('\nERROR RETRIEVING SERVICE CALL TICKETS\n')
-        return False
+        # return False
 
 
 # Get Resources assinged to a Service Call
@@ -128,7 +126,7 @@ def get_company_data(company_id):
         return response.json()['items']  # saves as list
     except:
         print('\nERROR RETRIEVING COMPANY DATA\n')
-        return False
+        # return False
 
 
 def get_all_resources():
@@ -148,7 +146,6 @@ def get_all_resources():
 
         return response.json()['items']  # saves as list
     except:
-        print('\nERROR RETRIEVING ALL RESOURCES\n')
         return False
 
 # Get company location, takes the companyLocationID from the Service Call
@@ -178,10 +175,10 @@ def get_company_location(location_id):
         response = requests.post(
             base_url + 'CompanyLocations/query', headers=headers, json=body)
 
-        print(response.json()['items'])
+        # print(response.json()['items'])
         return response.json()['items']  # saves as list
     except:
         print('\nERROR RETRIEVING COMPANY LOCATION\n')
         print(response.status_code, response.reason)
         print(response.text)
-        return False
+        # return False
