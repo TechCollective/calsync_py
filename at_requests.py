@@ -126,7 +126,6 @@ def get_company_data(company_id):
         return response.json()['items']  # saves as list
     except:
         print('\nERROR RETRIEVING COMPANY DATA\n')
-        # return False
 
 
 def get_all_resources():
@@ -181,4 +180,4 @@ def get_company_location(location_id):
         print('\nERROR RETRIEVING COMPANY LOCATION\n')
         print(response.status_code, response.reason)
         print(response.text)
-        # return False
+        return []

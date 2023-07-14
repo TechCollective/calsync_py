@@ -14,7 +14,7 @@ yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
 today_str = "2023-04-01"
-range_end_str = "2023-04-5"
+range_end_str = "2023-05-31"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 service_calls = get_service_calls(today_str, range_end_str)
@@ -45,33 +45,39 @@ new_and_updated = filter_by_ids(
 all_resources = get_all_resources()
 if all_resources == False:
     log_error("Unable to retrieve list of resources from AutoTask, aborting sync")
+    sys.exit()
 
 # Get additional data from AutoTask for new and updated service calls
 for s in new_and_updated:
-    if not isinstance(s, int):
-        print("Argument must be an integer.")
-        break
+    # Skip if ID isn't an integer
+    if not isinstance(s['id'], int):
+        print(f'not a integer {s}')
+        continue
 
-    # add resource emails:
-    service_call_ticket_id = get_service_call_ticket(s['id'])[0]["id"]
-    resources = get_service_call_resources(service_call_ticket_id)
-    resource_emails = []
+    # Add resource emails:
+    s_emails = ''
     try:
+        service_call_ticket_id = get_service_call_ticket(s['id'])[0]["id"]
+        resources = get_service_call_resources(service_call_ticket_id)
+        resource_emails = []
         for r in resources:
             resource_emails.append(next(
                 item for item in all_resources if item["id"] == r["resourceID"])["email"])
+        s.update({"emails": resource_emails})
+        s_emails = result = ', '.join(s['emails'])
     except:
         log_error(f"Error retrieving resource emails for service call: {s}")
 
-    s.update({"emails": resource_emails})
-
-    # add company:
-    company_id = get_company_data(s["companyID"])
-    company = company_id[0]['companyName']
+    # Add company
+    try:
+        company_id = get_company_data(s["companyID"])
+        company = company_id[0]['companyName']
+    except:
+        company = ''
     s.update({"company": company})
 
+    # Add location
     location = get_company_location(s['companyLocationID'])
-
     if len(location) > 0:
         location = location[0]['address1'] + '\n' + location[0]['address2'] + '\n' + \
             location[0]['city'] + '\n' + location[0]['state'] + \
@@ -79,9 +85,7 @@ for s in new_and_updated:
     else:
         location = ''
 
-    # Add to database:
-
-    s_emails = result = ', '.join(s['emails'])
+    # Add/Modify service call in database:
     # update_db_service_calls(call_id, startDateTime, endDateTime, description, company, location, resources, needs_sync
     update_db_service_calls(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
                             s['description'], s['company'], location, s_emails, 1)
@@ -92,6 +96,6 @@ for s in new_and_updated:
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
 deleted_service_call_ids = find_missing_ids(db_service_calls, service_calls)
 # then check to see if the date time is within range
-print("deleted: ", deleted_service_call_ids)
+log_event(f"deleted service calls: {deleted_service_call_ids}")
 mark_rows_as_deleted(deleted_service_call_ids,
                      today_str, range_end_str)
