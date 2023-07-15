@@ -1,9 +1,9 @@
 from at_requests import *
-from db_helpers import *
 from helpers import *
 from log import *
 from datetime import datetime, timedelta
 import sys
+from service_call import ServiceCall
 
 today = datetime.today().date()
 range_end = today + timedelta(days=365)
@@ -14,32 +14,33 @@ yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
 today_str = "2023-04-01"
-range_end_str = "2023-05-31"
+range_end_str = "2023-04-10"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
-service_calls = get_service_calls(today_str, range_end_str)
-if service_calls == False:
+at_service_calls = get_service_calls(today_str, range_end_str)
+if at_service_calls == False:
     log_event("Unable to fetch service calls from Autotaks, aborting sync")
     sys.exit()
 try:
-    db_service_calls = fetch_table_rows("service_calls")
+    # db_service_calls = fetch_table_rows("service_calls")
+    db_service_calls = ServiceCall.fetch_all()
 except:
     log_error("Unable to fetch service calls from database, aborting sync")
     sys.exit()
 # print("all service calls in range: \n", service_calls)
 
 # Compare to find service calls not in the database, return a list of IDs
-new_service_call_ids = find_missing_ids(service_calls, db_service_calls)
+new_service_call_ids = find_missing_ids(at_service_calls, db_service_calls)
 log_event(f"new service calls: {new_service_call_ids}")
 
 # Compare to find service calls with newer date modified than in the database
 modified_service_call_ids = compare_date_modified(
-    db_service_calls, service_calls)
+    db_service_calls, at_service_calls)
 log_event(f"modified service calls: {modified_service_call_ids}")
 
 # Create list of all new and modified service calls
 new_and_updated = filter_by_ids(
-    service_calls, new_service_call_ids + modified_service_call_ids)
+    at_service_calls, new_service_call_ids + modified_service_call_ids)
 
 # Get a list of all resources in AT
 all_resources = get_all_resources()
@@ -86,16 +87,22 @@ for s in new_and_updated:
         location = ''
 
     # Add/Modify service call in database:
-    # update_db_service_calls(call_id, startDateTime, endDateTime, description, company, location, resources, needs_sync
-    update_db_service_calls(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
-                            s['description'], s['company'], location, s_emails, 1)
+    try:
+        updated_service_call = ServiceCall(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
+                                           s['description'], s['company'], location, s_emails, 1)
+        updated_service_call.save()
 
-    print("Added/updated service call to db: ", s['id'], s['startDateTime'],
-          s['description'], s['company'], s_emails)
+        print("Added/updated service call to db: ", s['id'], s['startDateTime'],
+              s['description'], s['company'], s_emails)
+    except:
+        print("ERROR: Unable to add/update service call to db: ", s['id'], s['startDateTime'],
+              s['description'], s['company'], s_emails)
 
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
-deleted_service_call_ids = find_missing_ids(db_service_calls, service_calls)
+deleted_service_call_ids = find_missing_ids(db_service_calls, at_service_calls)
 # then check to see if the date time is within range
 log_event(f"deleted service calls: {deleted_service_call_ids}")
-mark_rows_as_deleted(deleted_service_call_ids,
-                     today_str, range_end_str)
+# mark_rows_as_deleted(deleted_service_call_ids,
+#                      today_str, range_end_str)
+ServiceCall.mark_as_deleted(deleted_service_call_ids,
+                            today_str, range_end_str)
