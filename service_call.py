@@ -1,6 +1,7 @@
 import sqlite3
 import json
 from datetime import datetime
+from log import *
 
 
 class ServiceCall:
@@ -83,8 +84,8 @@ class ServiceCall:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
         # Iterate over the IDs and check the rows in the table
         for id in ids:
             query = "SELECT id, startDateTime FROM service_calls WHERE id = ?"
@@ -94,12 +95,13 @@ class ServiceCall:
             # Iterate over the rows and update the "deleted" column if the start date is within the range
             for row in rows:
                 row_id, startDateTime = row
-                parsed_startDateTime = datetime.strptime(
+                parsed_startDateTime = datetime.datetime.strptime(
                     startDateTime, "%Y-%m-%dT%H:%M:%SZ").date()
 
                 if start_date <= parsed_startDateTime <= end_date:
                     update_query = "UPDATE service_calls SET deleted = 1 WHERE id = ?"
                     cursor.execute(update_query, (row_id,))
+                    log_event(f"{id} marked as deleted in DB")
 
         conn.commit()
         conn.close()

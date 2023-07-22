@@ -50,6 +50,7 @@ def get_service_calls(start_date, end_date):
             base_url + 'ServiceCalls/query', headers=headers, json=service_call_body)
         return response.json()['items']
     except:
+        log_error(f"{response.status_code} {response.reason} {response.text}")
         return False
 
 
@@ -72,7 +73,8 @@ def get_service_call_ticket(service_call_id):
             base_url + 'ServiceCallTickets/query', headers=headers, json=body)
         return response.json()['items']
     except:
-        print('\nERROR RETRIEVING SERVICE CALL TICKETS\n')
+        log_error('\nERROR RETRIEVING SERVICE CALL TICKETS\n')
+        log_error(f"{response.status_code} {response.reason} {response.text}")
         # return False
 
 
@@ -91,13 +93,14 @@ def get_service_call_resources(service_call_ticket_id):
             },
         ]
     }
-    # try:
-    response = requests.post(
-        base_url + 'ServiceCallTicketResources/query', headers=headers, json=body)
-    return response.json()['items']
-    # except:
-    #     print('\nERROR RETRIEVING SERVICE CALL TICKET RESOURCES\n')
-    #     return False
+    try:
+        response = requests.post(
+            base_url + 'ServiceCallTicketResources/query', headers=headers, json=body)
+        return response.json()['items']
+    except:
+        log_error(f"{response.status_code} {response.reason} {response.text}")
+        log_error('\nERROR RETRIEVING SERVICE CALL TICKET RESOURCES\n')
+        return []
 
 
 def get_company_data(company_id):
@@ -125,7 +128,8 @@ def get_company_data(company_id):
 
         return response.json()['items']  # saves as list
     except:
-        print('\nERROR RETRIEVING COMPANY DATA\n')
+        log_error('\nERROR RETRIEVING COMPANY DATA\n')
+        log_error(f"{response.status_code} {response.reason} {response.text}")
 
 
 def get_all_resources():
@@ -145,6 +149,8 @@ def get_all_resources():
 
         return response.json()['items']  # saves as list
     except:
+        log_error("Error retreiving all resources from autotask")
+        log_error(f"{response.status_code} {response.reason} {response.text}")
         return False
 
 # Get company location, takes the companyLocationID from the Service Call
@@ -177,7 +183,6 @@ def get_company_location(location_id):
         # print(response.json()['items'])
         return response.json()['items']  # saves as list
     except:
-        print('\nERROR RETRIEVING COMPANY LOCATION\n')
-        print(response.status_code, response.reason)
-        print(response.text)
+        log_error('\nERROR RETRIEVING COMPANY LOCATION\n')
+        log_error(f"{response.status_code} {response.reason} {response.text}")
         return []

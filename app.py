@@ -13,8 +13,8 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
-today_str = "2023-04-01"
-range_end_str = "2023-04-10"
+today_str = "2024-04-11"
+range_end_str = "2024-04-13"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)
@@ -99,10 +99,9 @@ for s in new_and_updated:
               s['description'], s['company'], s_emails)
 
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
-deleted_service_call_ids = find_missing_ids(db_service_calls, at_service_calls)
-# then check to see if the date time is within range
-log_event(f"deleted service calls: {deleted_service_call_ids}")
-# mark_rows_as_deleted(deleted_service_call_ids,
+missing_service_call_ids = find_missing_ids(db_service_calls, at_service_calls)
+log_event(f"missing service calls: {missing_service_call_ids}")
+# mark_rows_as_deleted(missing_service_call_ids,
 #                      today_str, range_end_str)
-ServiceCall.mark_as_deleted(deleted_service_call_ids,
+ServiceCall.mark_as_deleted(missing_service_call_ids,
                             today_str, range_end_str)
