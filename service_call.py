@@ -50,7 +50,32 @@ class ServiceCall:
         conn.commit()
         conn.close()
 
+    def get_rows_needing_sync():
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted IS NULL"
+        cursor.execute(query)
+
+        rows = cursor.fetchall()
+        columns = [description[0] for description in cursor.description]
+
+        result = []
+
+        for row in rows:
+            row_dict = {}
+            for i, column in enumerate(columns):
+                row_dict[column] = row[i]
+            result.append(row_dict)
+
+        conn.close()
+
+        return result
+
+
 # __________ convert all rows of db into a list __________
+
+
     @staticmethod
     def fetch_all():
 
@@ -111,6 +136,17 @@ class ServiceCall:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM users WHERE id=?", (id))
+        cursor.execute("DELETE FROM service_calls WHERE id=?", (id))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
+    def mark_as_synced(id):
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+
+        update_query = "UPDATE service_calls SET needs_sync = 0 WHERE id = ?"
+        cursor.execute(update_query, (id,))
+
         conn.commit()
         conn.close()

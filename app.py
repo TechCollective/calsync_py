@@ -4,8 +4,9 @@ from log import *
 from datetime import datetime, timedelta
 import sys
 from service_call import ServiceCall
+from google_event import *
 
-today = datetime.today().date()
+today = datetime.datetime.today().date()
 range_end = today + timedelta(days=365)
 yesterday = today - timedelta(days=1)
 today_str = today.strftime("%Y-%m-%d")
@@ -13,8 +14,8 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
-today_str = "2024-04-11"
-range_end_str = "2024-04-13"
+# today_str = "2023-04-14"
+# range_end_str = "2023-04-15"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)
@@ -86,6 +87,9 @@ for s in new_and_updated:
     else:
         location = ''
 
+
+# ______________________ Sync to Database ______________________
+
     # Add/Modify service call in database:
     try:
         updated_service_call = ServiceCall(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
@@ -101,7 +105,51 @@ for s in new_and_updated:
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
 missing_service_call_ids = find_missing_ids(db_service_calls, at_service_calls)
 log_event(f"missing service calls: {missing_service_call_ids}")
-# mark_rows_as_deleted(missing_service_call_ids,
-#                      today_str, range_end_str)
 ServiceCall.mark_as_deleted(missing_service_call_ids,
                             today_str, range_end_str)
+
+
+# ______________________ Sync to Google ______________________
+
+events_needing_gsync = ServiceCall.get_rows_needing_sync()
+# print(events_needing_gsync)
+
+for event in events_needing_gsync:
+
+    if event['description'][0:6].lower() == 'remote':
+        title = 'Remote: ' + event['company']
+    elif event['description'][0:6].lower() == 'onsite':
+        title = 'Onsite: ' + event['company']
+    else:
+        title = event['company']
+
+    db_id = event["id"]
+    event_id = f'autotask{event["id"]}'
+
+    result = {
+        'id': event_id,
+        'summary': title,
+        'description': event['description'],
+        'start': {
+            'dateTime': event['startDateTime'],
+            'timeZone': 'America/New_York',
+        },
+        'end': {
+            'dateTime': event['endDateTime'],
+            'timeZone': 'America/New_York',
+        },
+    }
+
+    try:
+        if event_exists(event_id) == False:
+            add_event(result)
+        else:
+            modify_event(result)
+
+        try:
+            ServiceCall.mark_as_synced(db_id)
+        except Exception as e:
+            log_error(
+                f'Error marking service call {db_id} as synced in database: {e}')
+    except:
+        log_error(f'Error syncing service call {db_id} to Google')
