@@ -8,10 +8,8 @@ from google_event import *
 
 today = datetime.datetime.today().date()
 range_end = today + timedelta(days=365)
-yesterday = today - timedelta(days=1)
 today_str = today.strftime("%Y-%m-%d")
 range_end_str = range_end.strftime("%Y-%m-%d")
-yesterday_str = yesterday.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
 # today_str = "2023-04-14"
@@ -153,3 +151,21 @@ for event in events_needing_gsync:
                 f'Error marking service call {db_id} as synced in database: {e}')
     except:
         log_error(f'Error syncing service call {db_id} to Google')
+
+
+deleted = ServiceCall.get_rows_needing_deletion()
+
+for event in deleted:
+    event_id = f'autotask{event["id"]}'
+    try:
+        delete_event(event_id)
+        ServiceCall.delete(event['id'])
+    except Exception as e:
+        log_error(e)
+
+
+# ______________________ Clean DB ______________________
+
+yesterday = today - timedelta(days=7)
+yesterday_str = yesterday.strftime("%Y-%m-%d")
+print(yesterday)

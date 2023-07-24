@@ -50,6 +50,7 @@ class ServiceCall:
         conn.commit()
         conn.close()
 
+    @staticmethod
     def get_rows_needing_sync():
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
@@ -72,9 +73,31 @@ class ServiceCall:
 
         return result
 
+    @staticmethod
+    def get_rows_needing_deletion():
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+
+        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted IS 1"
+        cursor.execute(query)
+
+        rows = cursor.fetchall()
+        columns = [description[0] for description in cursor.description]
+
+        result = []
+
+        for row in rows:
+            row_dict = {}
+            for i, column in enumerate(columns):
+                row_dict[column] = row[i]
+            result.append(row_dict)
+
+        conn.close()
+
+        return result
+
 
 # __________ convert all rows of db into a list __________
-
 
     @staticmethod
     def fetch_all():
@@ -124,7 +147,7 @@ class ServiceCall:
                     startDateTime, "%Y-%m-%dT%H:%M:%SZ").date()
 
                 if start_date <= parsed_startDateTime <= end_date:
-                    update_query = "UPDATE service_calls SET deleted = 1 WHERE id = ?"
+                    update_query = "UPDATE service_calls SET deleted = 1, needs_sync = 1 WHERE id = ?"
                     cursor.execute(update_query, (row_id,))
                     log_event(f"{id} marked as deleted in DB")
 
@@ -136,7 +159,7 @@ class ServiceCall:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM service_calls WHERE id=?", (id))
+        cursor.execute("DELETE FROM service_calls WHERE id=?", (id,))
         conn.commit()
         conn.close()
 
