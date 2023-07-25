@@ -1,19 +1,20 @@
 from at_requests import *
 from helpers import *
 from log import *
-from datetime import datetime, timedelta
 import sys
 from service_call import ServiceCall
 from google_event import *
+from datetime import datetime, timedelta
 
-today = datetime.datetime.today().date()
+
+today = datetime.today().date()
 range_end = today + timedelta(days=365)
 today_str = today.strftime("%Y-%m-%d")
 range_end_str = range_end.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
-# today_str = "2023-04-14"
-# range_end_str = "2023-04-15"
+today_str = "2023-04-20"
+range_end_str = "2023-04-21"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)
@@ -26,7 +27,6 @@ try:
 except:
     log_error("Unable to fetch service calls from database, aborting sync")
     sys.exit()
-# print("all service calls in range: \n", service_calls)
 
 # Compare to find service calls not in the database, return a list of IDs
 new_service_call_ids = find_missing_ids(at_service_calls, db_service_calls)
@@ -51,7 +51,7 @@ if all_resources == False:
 for s in new_and_updated:
     # Skip if ID isn't an integer
     if not isinstance(s['id'], int):
-        print(f'not a integer {s}')
+        log_error(f'not a integer {s}')
         continue
 
     # Add resource emails:
@@ -85,20 +85,40 @@ for s in new_and_updated:
     else:
         location = ''
 
+    # Add ticket info
+    ticket_ids = []
+    ticketInfo = '\n'
+
+    try:
+        service_call_ticket_info = get_service_call_ticket(s['id'])
+        ticket_ids = [i['ticketID'] for i in service_call_ticket_info]
+        for i in ticket_ids:
+            ticketInfo += (
+                'https://ww14.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID=' + str(i) + '\n')
+    except Exception as e:
+        log_error(f'Error getting ticket ids {e}')
+
+    for id in ticket_ids:
+        try:
+            ticketInfo += f'\n{get_ticket(id)[0]["description"]}'
+        except Exception as e:
+            log_error(f'Error getting ticket description: {e}')
+
 
 # ______________________ Sync to Database ______________________
 
     # Add/Modify service call in database:
+    # (self, call_id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, ticketInfo, deleted, needs_sync):
     try:
         updated_service_call = ServiceCall(s['id'], s['startDateTime'], s['endDateTime'], s['lastModifiedDateTime'],
-                                           s['description'], s['company'], location, s_emails, 1)
+                                           s['description'], s['company'], location, s_emails, ticketInfo, 0, 1)
         updated_service_call.save()
 
-        print("Added/updated service call to db: ", s['id'], s['startDateTime'],
-              s['description'], s['company'], s_emails)
+        log_event(
+            f"Added/updated service call to db:  {s['id']} {s['startDateTime']} {s['description']} {s['company']} {s_emails}")
     except:
-        print("ERROR: Unable to add/update service call to db: ", s['id'], s['startDateTime'],
-              s['description'], s['company'], s_emails)
+        log_error(
+            f"ERROR: Unable to add/update service call to db:  {s['id']} {s['startDateTime']} {s['description']} {s['company']} {s_emails}")
 
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
 missing_service_call_ids = find_missing_ids(db_service_calls, at_service_calls)
@@ -110,7 +130,6 @@ ServiceCall.mark_as_deleted(missing_service_call_ids,
 # ______________________ Sync to Google ______________________
 
 events_needing_gsync = ServiceCall.get_rows_needing_sync()
-# print(events_needing_gsync)
 
 for event in events_needing_gsync:
 
@@ -127,7 +146,7 @@ for event in events_needing_gsync:
     result = {
         'id': event_id,
         'summary': title,
-        'description': event['description'],
+        'description': event['description'] + event['ticketInfo'],
         'start': {
             'dateTime': event['startDateTime'],
             'timeZone': 'America/New_York',
@@ -166,6 +185,28 @@ for event in deleted:
 
 # ______________________ Clean DB ______________________
 
-yesterday = today - timedelta(days=7)
-yesterday_str = yesterday.strftime("%Y-%m-%d")
-print(yesterday)
+
+# yesterday = today - timedelta(days=7)
+# yesterday_str = yesterday.strftime("%Y-%m-%d")
+# print(yesterday)
+
+
+# def delete_old_events(specified_date):
+#     conn = sqlite3.connect("data.db")
+#     cursor = conn.cursor()
+
+#     # Convert the specified_date to a string in "%Y-%m-%d" format
+#     specified_date_str = specified_date.strftime("%Y-%m-%d")
+
+#     # Delete events with end_date older than the specified date
+#     delete_query = "DELETE FROM service_calls WHERE endDateTime < ?"
+#     cursor.execute(delete_query, (specified_date_str,))
+
+#     conn.commit()
+#     conn.close()
+
+
+# try:
+#     delete_old_events(yesterday)
+# except Exception as e:
+#     log_error(e)

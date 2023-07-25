@@ -12,8 +12,9 @@ cursor.execute('''CREATE TABLE IF NOT EXISTS service_calls (
                     endDateTime TEXT,
                     description TEXT,
                     company TEXT,
-                    resources TEXT,
                     location TEXT,
+                    resources TEXT,
+                    ticketInfo TEXT,
                     deleted INTEGER,
                     needs_sync INTEGER
                 )''')

@@ -186,3 +186,23 @@ def get_company_location(location_id):
         log_error('\nERROR RETRIEVING COMPANY LOCATION\n')
         log_error(f"{response.status_code} {response.reason} {response.text}")
         return []
+
+
+def get_ticket(ticket_id):
+    body = {
+        "maxRecords": 0,
+        "filter": [
+            {
+                "op": "eq",
+                "field": "id",
+                "value": ticket_id,
+            },
+        ]
+    }
+    try:
+        response = requests.post(
+            base_url + 'Tickets/query', headers=headers, json=body)
+        return response.json()['items']
+    except:
+        log_error('\nERROR RETRIEVING TICKET\n')
+        log_error(f"{response.status_code} {response.reason} {response.text}")

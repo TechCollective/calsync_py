@@ -5,7 +5,7 @@ from log import *
 
 
 class ServiceCall:
-    def __init__(self, call_id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync):
+    def __init__(self, call_id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, ticketInfo, deleted, needs_sync):
         self.call_id = call_id
         self.startDateTime = startDateTime
         self.endDateTime = endDateTime
@@ -14,6 +14,8 @@ class ServiceCall:
         self.company = company
         self.location = location
         self.resources = resources
+        self.ticketInfo = ticketInfo
+        self.deleted = deleted
         self.needs_sync = needs_sync
 
     def save(self):
@@ -36,15 +38,17 @@ class ServiceCall:
                             company = ?,
                             location = ?,
                             resources = ?,
+                            ticketInfo = ?,
+                            deleted = ?,
                             needs_sync = ?
                             WHERE id = ?''',
-                           (self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.needs_sync, self.call_id))
+                           (self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync, self.call_id))
         else:
             # Row does not exist, create a new row
             cursor.execute('''INSERT INTO service_calls 
-                            (id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, needs_sync)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                           (self.call_id, self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.needs_sync))
+                            (id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, ticketInfo, deleted, needs_sync)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                           (self.call_id, self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync))
 
         # Commit the changes and close the connection
         conn.commit()
@@ -55,7 +59,7 @@ class ServiceCall:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted IS NULL"
+        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted = 0"
         cursor.execute(query)
 
         rows = cursor.fetchall()
@@ -78,7 +82,7 @@ class ServiceCall:
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted IS 1"
+        query = "SELECT * FROM service_calls WHERE needs_sync = 1 AND deleted = 1"
         cursor.execute(query)
 
         rows = cursor.fetchall()
