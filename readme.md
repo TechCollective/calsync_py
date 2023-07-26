@@ -12,7 +12,7 @@ ALERTRECIPIENT =
 TESTMODE = FALSE
 ```
 
-2. Install pipenv and dependencies
+2. Install pipenv `pip install pipenv` and from `pipenv shell` install dependencies `pipenv install`
 
 3. Download credentials from Google Cloud, which can be found under OAuth 2.0 Client IDs. Save the file as credentials.json
 

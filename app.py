@@ -16,8 +16,8 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 
 # Custom dates for testing
 if os.getenv("TESTMODE") == 'TRUE':
-    today_str = "2024-07-25"
-    range_end_str = "2024-07-26"
+    today_str = "2023-02-01"
+    range_end_str = "2023-02-07"
 
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
@@ -173,7 +173,7 @@ for event in events_needing_gsync:
                 'dateTime': event['endDateTime'],
                 'timeZone': 'America/New_York',
             },
-            'attendees': attendees,
+            # 'attendees': attendees,
         }
     except:
         continue
@@ -210,10 +210,8 @@ for event in deleted:
 # ______________________ Clean DB ______________________
 
 
-# yesterday = today - timedelta(days=7)
-# yesterday_str = yesterday.strftime("%Y-%m-%d")
-
-# try:
-#     ServiceCall.delete_old_events(yesterday)
-# except Exception as e:
-#     log_error(e)
+delete_date = datetime.strptime(today_str, f'%Y-%m-%d') - timedelta(days=7)
+try:
+    ServiceCall.delete_old_events(delete_date)
+except Exception as e:
+    log_error(e)
