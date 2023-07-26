@@ -14,8 +14,8 @@ today_str = today.strftime("%Y-%m-%d")
 range_end_str = range_end.strftime("%Y-%m-%d")
 
 # uncomment for testing a set range:
-today_str = "2023-04-01"
-range_end_str = "2023-05-05"
+today_str = "2024-07-25"
+range_end_str = "2024-07-26"
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)
@@ -154,6 +154,10 @@ for event in events_needing_gsync:
         db_id = event["id"]
         event_id = f'autotask{event["id"]}'
 
+        event_resources = ((event['resources']).split(', '))
+        attendees = [{'email': email, 'responseStatus': 'accepted'}
+                     for email in event_resources]
+
         result = {
             'id': event_id,
             'summary': title,
@@ -166,6 +170,7 @@ for event in events_needing_gsync:
                 'dateTime': event['endDateTime'],
                 'timeZone': 'America/New_York',
             },
+            'attendees': attendees,
         }
     except:
         continue

@@ -78,7 +78,7 @@ def log_error(event):
 
     # Send email alert when error log file is created
     if os.path.exists(log_file_path) == False:
-        send_alert(event)
+        send_alert(f'New error log created\n{event}')
 
     # Get the current time in the format "HH:MM:SS"
     current_time = datetime.datetime.now().strftime("%H:%M:%S")
@@ -91,6 +91,3 @@ def log_error(event):
         log_file.write(f"{log_message}\n")
 
     print(log_message)
-
-
-log_error('test123!')
