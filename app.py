@@ -2,6 +2,7 @@ from at_requests import *
 from helpers import *
 from log import *
 import sys
+from dotenv import load_dotenv
 from service_call import ServiceCall
 from google_event import *
 from datetime import datetime, timedelta
@@ -13,9 +14,11 @@ range_end = today + timedelta(days=365)
 today_str = today.strftime("%Y-%m-%d")
 range_end_str = range_end.strftime("%Y-%m-%d")
 
-# uncomment for testing a set range:
-today_str = "2024-07-25"
-range_end_str = "2024-07-26"
+# Custom dates for testing
+if os.getenv("TESTMODE") == 'TRUE':
+    today_str = "2024-07-25"
+    range_end_str = "2024-07-26"
+
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)

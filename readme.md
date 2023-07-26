@@ -1,6 +1,6 @@
 ## Setup
 
-1. Create a .env file and store it in the project directory. It should include the following AutoTask credentials:
+1. Create a .env file and store it in the project directory. It should include the following AutoTask credentials, as well as Google credentials for the email alert email address, password, and recipient email address:
 
 ```
 USERNAME =
@@ -9,6 +9,7 @@ APIINTEGRATIONCODE=
 ALERTUSER =
 ALERTPASS =
 ALERTRECIPIENT =
+TESTMODE = FALSE
 ```
 
 2. Install pipenv and dependencies
