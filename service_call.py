@@ -177,3 +177,18 @@ class ServiceCall:
 
         conn.commit()
         conn.close()
+
+    @staticmethod
+    def delete_old_events(specified_date):
+        conn = sqlite3.connect("data.db")
+        cursor = conn.cursor()
+
+        # Convert the specified_date to a string in "%Y-%m-%d" format
+        specified_date_str = specified_date.strftime("%Y-%m-%d")
+
+        # Delete events with end_date older than the specified date
+        delete_query = "DELETE FROM service_calls WHERE endDateTime < ?"
+        cursor.execute(delete_query, (specified_date_str,))
+
+        conn.commit()
+        conn.close()

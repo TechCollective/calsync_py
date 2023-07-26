@@ -6,12 +6,17 @@
 USERNAME =
 SECRET=
 APIINTEGRATIONCODE=
+ALERTUSER =
+ALERTPASS =
+ALERTRECIPIENT =
 ```
 
 2. Install pipenv and dependencies
 
 3. Download credentials from Google Cloud, which can be found under OAuth 2.0 Client IDs. Save the file as credentials.json
 
-4. Run g_auth.py and use the url to authenticate
+4. From pipenv shell, run `python g_auth.py` and use the url to authenticate
 
-5. Run python db_init.py to initialize the database
+5. From pipenv shell, run `python db_init.py` to initialize the database
+
+6. From pipenv shell, run `python app.py`
