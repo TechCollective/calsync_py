@@ -4,7 +4,7 @@ import json
 from dotenv import load_dotenv
 from log import *
 
-load_dotenv()
+load_dotenv(override=True)
 
 base_url = 'https://webservices14.autotask.net/ATServicesRest/V1.0/'
 

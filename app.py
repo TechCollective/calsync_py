@@ -16,8 +16,8 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 
 # Custom dates for testing
 if os.getenv("TESTMODE") == 'TRUE':
-    today_str = "2023-02-01"
-    range_end_str = "2023-02-07"
+    today_str = "2024-07-25"
+    range_end_str = "2024-07-28"
 
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
