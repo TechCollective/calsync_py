@@ -19,6 +19,7 @@ if os.getenv("TESTMODE") == 'TRUE':
     today_str = "2024-07-25"
     range_end_str = "2024-07-28"
 
+log_event("\n\n Starting Sync")
 
 # Get a list of service calls from AutoTask and from the database. Exit if can't get either.
 at_service_calls = get_service_calls(today_str, range_end_str)
@@ -173,7 +174,7 @@ for event in events_needing_gsync:
                 'dateTime': event['endDateTime'],
                 'timeZone': 'America/New_York',
             },
-            # 'attendees': attendees,
+            'attendees': attendees,
         }
     except:
         continue
@@ -212,6 +213,7 @@ for event in deleted:
 
 delete_date = datetime.strptime(today_str, f'%Y-%m-%d') - timedelta(days=7)
 try:
+    log_event(f"Removing any old service calls from the database (before {delete_date})")
     ServiceCall.delete_old_events(delete_date)
 except Exception as e:
-    log_error(e)
+    log_error(f"Error removing old service calls from database \n{e}")
