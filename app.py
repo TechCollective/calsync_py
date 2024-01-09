@@ -16,8 +16,8 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 
 # Custom dates for testing
 if os.getenv("TESTMODE") == 'TRUE':
-    today_str = "2024-07-25"
-    range_end_str = "2024-07-28"
+    today_str = "2023-12-21"
+    range_end_str = "2023-12-21"
 
 log_event("\n\n Starting Sync")
 
@@ -175,6 +175,7 @@ for event in events_needing_gsync:
                 'timeZone': 'America/New_York',
             },
             'attendees': attendees,
+            'location': event['location'],
         }
     except:
         continue
@@ -213,7 +214,8 @@ for event in deleted:
 
 delete_date = datetime.strptime(today_str, f'%Y-%m-%d') - timedelta(days=7)
 try:
-    log_event(f"Removing any old service calls from the database (before {delete_date})")
+    log_event(
+        f"Removing any old service calls from the database (before {delete_date})")
     ServiceCall.delete_old_events(delete_date)
 except Exception as e:
     log_error(f"Error removing old service calls from database \n{e}")

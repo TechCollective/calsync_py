@@ -26,9 +26,33 @@ def is_date_within_range(date, start_date, end_date):
 # compares two lists, returns the id if the item in the first list is older than the item in the second list
 
 
+# def compare_date_modified(list1, list2):
+#     matching_ids = [item1['id'] for item1 in list1 for item2 in list2 if item1['id'] == item2['id'] and datetime.strptime(
+#         item1['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(item2['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")]
+#     return matching_ids
+
+
 def compare_date_modified(list1, list2):
-    matching_ids = [item1['id'] for item1 in list1 for item2 in list2 if item1['id'] == item2['id'] and datetime.strptime(
-        item1['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ") < datetime.strptime(item2['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")]
+    matching_ids = []
+    for item1 in list1:
+        for item2 in list2:
+            if item1['id'] == item2['id']:
+                try:
+                    date1 = datetime.strptime(
+                        item1['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+                except ValueError:
+                    date1 = datetime.strptime(
+                        item1['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%SZ")
+
+                try:
+                    date2 = datetime.strptime(
+                        item2['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%S.%fZ")
+                except ValueError:
+                    date2 = datetime.strptime(
+                        item2['lastModifiedDateTime'], "%Y-%m-%dT%H:%M:%SZ")
+
+                if date1 < date2:
+                    matching_ids.append(item1['id'])
     return matching_ids
 
 
