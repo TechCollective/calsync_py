@@ -1,6 +1,7 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime, date, time
+from helpers import extract_date
 from log import *
 
 
@@ -103,6 +104,7 @@ class ServiceCall:
 
 # __________ convert all rows of db into a list __________
 
+
     @staticmethod
     def fetch_all():
 
@@ -132,25 +134,21 @@ class ServiceCall:
 
     @staticmethod
     def mark_as_deleted(ids, start_date, end_date):
-
         conn = sqlite3.connect("data.db")
         cursor = conn.cursor()
 
-        start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-        # Iterate over the IDs and check the rows in the table
+        # Flexible date parsing for arguments
+        start_date = extract_date(start_date)
+        end_date = extract_date(end_date)
+
         for id in ids:
             query = "SELECT id, startDateTime FROM service_calls WHERE id = ?"
             cursor.execute(query, (id,))
             rows = cursor.fetchall()
 
-            # Iterate over the rows and update the "deleted" column if the start date is within the range
-            for row in rows:
-                row_id, startDateTime = row
-                parsed_startDateTime = datetime.datetime.strptime(
-                    startDateTime, "%Y-%m-%dT%H:%M:%SZ").date()
-
-                if start_date <= parsed_startDateTime <= end_date:
+            for row_id, startDateTime in rows:
+                parsed_date = extract_date(startDateTime)
+                if start_date <= parsed_date <= end_date:
                     update_query = "UPDATE service_calls SET deleted = 1, needs_sync = 1 WHERE id = ?"
                     cursor.execute(update_query, (row_id,))
                     log_event(f"{id} marked as deleted in DB")
