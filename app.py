@@ -170,69 +170,69 @@ except Exception as e:
 
 # ______________________ Sync to Google ______________________
 
-# try:
-#     events_needing_gsync = ServiceCall.get_rows_needing_sync()
-# except Exception as e:
-#     log_error(f'Error retrieving events needed sync from database: {e}')
-#     events_needing_gsync = []
+try:
+    events_needing_gsync = ServiceCall.get_rows_needing_sync()
+except Exception as e:
+    log_error(f'Error retrieving events needed sync from database: {e}')
+    events_needing_gsync = []
 
-# for event in events_needing_gsync:
-#     try:
-#         if event['description'][0:6].lower() == 'remote':
-#             title = 'Remote: ' + event['company']
-#         elif event['description'][0:6].lower() == 'onsite':
-#             title = 'Onsite: ' + event['company']
-#         else:
-#             title = event['company']
+for event in events_needing_gsync:
+    try:
+        if event['description'][0:6].lower() == 'remote':
+            title = 'Remote: ' + event['company']
+        elif event['description'][0:6].lower() == 'onsite':
+            title = 'Onsite: ' + event['company']
+        else:
+            title = event['company']
 
-#         db_id = event["id"]
-#         event_id = f'autotask{event["id"]}'
+        db_id = event["id"]
+        event_id = f'autotask{event["id"]}'
 
-#         event_resources = ((event['resources']).split(', '))
-#         attendees = [{'email': email, 'responseStatus': 'accepted'}
-#                      for email in event_resources]
+        event_resources = ((event['resources']).split(', '))
+        attendees = [{'email': email, 'responseStatus': 'accepted'}
+                     for email in event_resources]
 
-#         start_iso = _norm(event['startDateTime'])
-#         end_iso = _norm(event['endDateTime'])
+        start_iso = _norm(event['startDateTime'])
+        end_iso = _norm(event['endDateTime'])
 
-#         result = {
-#             'id': event_id,
-#             'summary': title,
-#             'description': event['description'] + event['ticketInfo'],
-#             'start': {
-#                 'dateTime': start_iso,
-#                 'timeZone': 'America/New_York',
-#             },
-#             'end': {
-#                 'dateTime': end_iso,
-#                 'timeZone': 'America/New_York',
-#             },
-#             'attendees': attendees,
-#             'location': event['location'],
-#         }
-#     except Exception:
-#         continue
+        result = {
+            'id': event_id,
+            'summary': title,
+            'description': event['description'] + event['ticketInfo'],
+            'start': {
+                'dateTime': start_iso,
+                'timeZone': 'America/New_York',
+            },
+            'end': {
+                'dateTime': end_iso,
+                'timeZone': 'America/New_York',
+            },
+            'attendees': attendees,
+            'location': event['location'],
+        }
+    except Exception:
+        continue
 
-#     try:
-#         if event_exists(event_id) is False:
-#             add_event(result)
-#         else:
-#             modify_event(result)
+    try:
+        if event_exists(event_id) is False:
+            add_event(result)
+        else:
+            modify_event(result)
 
-#         try:
-#             ServiceCall.mark_as_synced(db_id)
-#         except Exception as e:
-#             log_error(
-#                 f'Error marking service call {db_id} as synced in database: {e}')
-#     except Exception:
-#         log_error(f'Error syncing service call {db_id} to Google')
+        try:
+            ServiceCall.mark_as_synced(db_id)
+        except Exception as e:
+            log_error(
+                f'Error marking service call {db_id} as synced in database: {e}')
+    except Exception:
+        log_error(f'Error syncing service call {db_id} to Google')
 
-# # ______________________ Clean DB ______________________
+# ______________________ Clean DB ______________________
 
-# delete_date = datetime.strptime(today_str, '%Y-%m-%d') - timedelta(days=1)
-# try:
-#     log_event(
-#         f"Removing any old service calls from the database (before {delete_date})")
-#     ServiceCall.delete_old_events(delete_date)
-# except Exception as e:
-#     log_error(f"Error removing old service calls from database \n{e}")
+delete_date = datetime.strptime(today_str, '%Y-%m-%d') - timedelta(days=1)
+try:
+    log_event(
+        f"Removing any old service calls from the database (before {delete_date})")
+    ServiceCall.delete_old_events(delete_date)
+except Exception as e:
+    log_error(f"Error removing old service calls from database \n{e}")
