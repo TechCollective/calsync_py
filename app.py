@@ -54,6 +54,37 @@ modified_service_call_ids = compare_date_modified(
     db_service_calls, at_service_calls)
 log_event(f"modified service calls: {modified_service_call_ids}")
 
+# Check for service calls with forwarded tickets - resources may have changed without updating lastModifiedDateTime
+log_event("Checking for forwarded tickets...")
+forwarded_status_id = get_ticket_status_id('Forwarded')
+if forwarded_status_id is None:
+    log_error("Could not find 'Forwarded' ticket status ID - skipping forwarded ticket check")
+else:
+    already_flagged = set(new_service_call_ids + modified_service_call_ids)
+    forwarded_found = []
+    from_date = extract_date(today_str)
+    to_date = extract_date(range_end_str)
+    for sc in db_service_calls:
+        if sc['id'] in already_flagged or sc.get('deleted'):
+            continue
+        sc_date = extract_date(sc.get('startDateTime', ''))
+        if not sc_date or not (from_date <= sc_date <= to_date):
+            continue
+        # Extract ticket IDs from the stored ticketInfo field to avoid an extra API call
+        ticket_ids_from_db = [
+            int(part.split('TicketID=')[1].split()[0])
+            for part in (sc.get('ticketInfo') or '').split('\n')
+            if 'TicketID=' in part
+        ]
+        for ticket_id in ticket_ids_from_db:
+            ticket_data = get_ticket(ticket_id)
+            if ticket_data and int(ticket_data[0].get('status')) == int(forwarded_status_id):
+                log_event(f"Service call {sc['id']} has forwarded ticket {ticket_id}, flagging for resync")
+                modified_service_call_ids.append(sc['id'])
+                forwarded_found.append(sc['id'])
+                break
+    log_event(f"Forwarded ticket check complete: {len(forwarded_found)} service call(s) flagged {forwarded_found if forwarded_found else ''}")
+
 # Create list of all new and modified service calls
 new_and_updated = filter_by_ids(
     at_service_calls, new_service_call_ids + modified_service_call_ids)
@@ -112,26 +143,34 @@ for s in new_and_updated:
 
     # Add company
     company = ''
-    try:
-        company_data = get_company_data(s["companyID"])
-        if company_data:
-            company = company_data[0]['companyName']
-    except Exception as e:
-        log_error(f"Error retrieving company for service call {s['id']}: {e}")
+    company_id = s.get("companyID") or s.get("companyId")
+    if not company_id:
+        log_event(f"Service call {s['id']} has no companyID, skipping company lookup")
+    else:
+        try:
+            company_data = get_company_data(company_id)
+            if company_data:
+                company = company_data[0]['companyName']
+        except Exception as e:
+            log_error(f"Error retrieving company for service call {s['id']}: {e}")
     s.update({"company": company})
 
     # Add location
     location = ''
-    try:
-        location_data = get_company_location(s['companyLocationID'])
-        if len(location_data) > 0:
-            location = (
-                location_data[0]['address1'] + '\n' + location_data[0]['address2'] + '\n' +
-                location_data[0]['city'] + '\n' + location_data[0]['state'] +
-                '\n' + location_data[0]['postalCode']
-            )
-    except Exception as e:
-        log_error(f"Error retrieving location for service call {s['id']}: {e}")
+    location_id = s.get("companyLocationID") or s.get("companyLocationId") or s.get("companylocationID")
+    if not location_id:
+        log_event(f"Service call {s['id']} has no companyLocationID, skipping location lookup")
+    else:
+        try:
+            location_data = get_company_location(location_id)
+            if len(location_data) > 0:
+                location = (
+                    location_data[0]['address1'] + '\n' + location_data[0]['address2'] + '\n' +
+                    location_data[0]['city'] + '\n' + location_data[0]['state'] +
+                    '\n' + location_data[0]['postalCode']
+                )
+        except Exception as e:
+            log_error(f"Error retrieving location for service call {s['id']}: {e}")
 
     # Add ticket info
     ticket_ids = []

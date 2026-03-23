@@ -28,7 +28,7 @@ def get_service_calls(start_date, end_date):
             "companyID",
             "duration",
             "lastModifiedDateTime",
-            "companylocationID",
+            "companyLocationID",
             "canceledDateTime",
         ],
         "Filter": [
@@ -202,6 +202,38 @@ def get_company_location(location_id):
     except Exception as e:
         log_error(f"Error retrieving location for {location_id}: {e}")
         return []
+
+
+def _get_ticket_status_picklist_values():
+    """Fetch and return the raw ticket status picklist values from the AT API."""
+    try:
+        response = requests.get(
+            base_url + 'Tickets/entityInformation/fields', headers=headers)
+        response.raise_for_status()
+        fields = response.json().get('fields', [])
+        status_field = next((f for f in fields if f.get('name') == 'status'), None)
+        return status_field.get('picklistValues', []) if status_field else []
+    except Exception as e:
+        log_error(f"Error fetching ticket status picklist: {e}")
+        return []
+
+
+def get_ticket_status_picklist():
+    """Print all ticket status picklist values and their IDs. Run this to find the numeric ID for a status label."""
+    values = _get_ticket_status_picklist_values()
+    if values:
+        print("Ticket status picklist values:")
+        for item in values:
+            print(f"  {item['value']:>4}  {item['label']}")
+    else:
+        print("No status picklist values found.")
+
+
+def get_ticket_status_id(label):
+    """Return the numeric picklist ID for a given ticket status label, or None if not found."""
+    values = _get_ticket_status_picklist_values()
+    match = next((item for item in values if item['label'].lower() == label.lower()), None)
+    return match['value'] if match else None
 
 
 def get_ticket(ticket_id):
