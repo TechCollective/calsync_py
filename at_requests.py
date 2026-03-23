@@ -48,9 +48,13 @@ def get_service_calls(start_date, end_date):
     try:
         response = requests.post(
             base_url + 'ServiceCalls/query', headers=headers, json=service_call_body)
+        response.raise_for_status()
         return response.json()['items']
-    except:
-        log_error(f"{response.status_code} {response.reason} {response.text}")
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error fetching service calls: {e}")
+        return False
+    except Exception as e:
+        log_error(f"Error fetching service calls: {e}")
         return False
 
 
@@ -71,11 +75,14 @@ def get_service_call_ticket(service_call_id):
     try:
         response = requests.post(
             base_url + 'ServiceCallTickets/query', headers=headers, json=body)
+        response.raise_for_status()
         return response.json()['items']
-    except:
-        log_error('\nERROR RETRIEVING SERVICE CALL TICKETS\n')
-        log_error(f"{response.status_code} {response.reason} {response.text}")
-        # return False
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving service call tickets for {service_call_id}: {e}")
+        return []
+    except Exception as e:
+        log_error(f"Error retrieving service call tickets for {service_call_id}: {e}")
+        return []
 
 
 # Get Resources assinged to a Service Call
@@ -96,10 +103,13 @@ def get_service_call_resources(service_call_ticket_id):
     try:
         response = requests.post(
             base_url + 'ServiceCallTicketResources/query', headers=headers, json=body)
+        response.raise_for_status()
         return response.json()['items']
-    except:
-        log_error(f"{response.status_code} {response.reason} {response.text}")
-        log_error('\nERROR RETRIEVING SERVICE CALL TICKET RESOURCES\n')
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving resources for service call ticket {service_call_ticket_id}: {e}")
+        return []
+    except Exception as e:
+        log_error(f"Error retrieving resources for service call ticket {service_call_ticket_id}: {e}")
         return []
 
 
@@ -125,11 +135,14 @@ def get_company_data(company_id):
     try:
         response = requests.post(
             base_url + 'Companies/query', headers=headers, json=company_body)
-
+        response.raise_for_status()
         return response.json()['items']  # saves as list
-    except:
-        log_error('\nERROR RETRIEVING COMPANY DATA\n')
-        log_error(f"{response.status_code} {response.reason} {response.text}")
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving company data for {company_id}: {e}")
+        return []
+    except Exception as e:
+        log_error(f"Error retrieving company data for {company_id}: {e}")
+        return []
 
 
 def get_all_resources():
@@ -146,11 +159,13 @@ def get_all_resources():
     try:
         response = requests.post(
             base_url + 'Resources/query', headers=headers, json=body)
-
+        response.raise_for_status()
         return response.json()['items']  # saves as list
-    except:
-        log_error("Error retreiving all resources from autotask")
-        log_error(f"{response.status_code} {response.reason} {response.text}")
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving all resources: {e}")
+        return False
+    except Exception as e:
+        log_error(f"Error retrieving all resources: {e}")
         return False
 
 # Get company location, takes the companyLocationID from the Service Call
@@ -179,12 +194,13 @@ def get_company_location(location_id):
     try:
         response = requests.post(
             base_url + 'CompanyLocations/query', headers=headers, json=body)
-
-        # print(response.json()['items'])
+        response.raise_for_status()
         return response.json()['items']  # saves as list
-    except:
-        log_error('\nERROR RETRIEVING COMPANY LOCATION\n')
-        log_error(f"{response.status_code} {response.reason} {response.text}")
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving location for {location_id}: {e}")
+        return []
+    except Exception as e:
+        log_error(f"Error retrieving location for {location_id}: {e}")
         return []
 
 
@@ -202,7 +218,11 @@ def get_ticket(ticket_id):
     try:
         response = requests.post(
             base_url + 'Tickets/query', headers=headers, json=body)
+        response.raise_for_status()
         return response.json()['items']
-    except:
-        log_error('\nERROR RETRIEVING TICKET\n')
-        log_error(f"{response.status_code} {response.reason} {response.text}")
+    except requests.exceptions.RequestException as e:
+        log_error(f"Network error retrieving ticket {ticket_id}: {e}")
+        return []
+    except Exception as e:
+        log_error(f"Error retrieving ticket {ticket_id}: {e}")
+        return []

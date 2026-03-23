@@ -2,6 +2,8 @@ from at_requests import *
 from helpers import *
 from log import *
 import sys
+import os
+import subprocess
 from dotenv import load_dotenv
 from service_call import ServiceCall
 from google_event import *
@@ -18,7 +20,7 @@ range_end_str = range_end.strftime("%Y-%m-%d")
 
 # Custom dates for testing
 if os.getenv("TESTMODE") == 'TRUE':
-    today_str = "2025-12-22"
+    today_str = "2025-12-20"
     range_end_str = "2025-12-25"
 
 log_event("\n\n Starting Sync")
@@ -28,10 +30,19 @@ at_service_calls = get_service_calls(today_str, range_end_str)
 if at_service_calls is False:
     log_event("Unable to fetch service calls from Autotaks, aborting sync")
     sys.exit()
+if not os.path.exists('data.db'):
+    log_error("Database not found, running db_init.py to create a new one")
+    try:
+        subprocess.run([sys.executable, 'db_init.py'], check=True)
+        log_event("Database created successfully")
+    except Exception as e:
+        log_error(f"Failed to create database: {e}")
+        sys.exit()
+
 try:
     db_service_calls = ServiceCall.fetch_all()
-except Exception:
-    log_error("Unable to fetch service calls from database, aborting sync")
+except Exception as e:
+    log_error(f"Unable to fetch service calls from database, aborting sync: {e}")
     sys.exit()
 
 # Compare to find service calls not in the database, return a list of IDs
@@ -83,35 +94,44 @@ for s in new_and_updated:
     # Add resource emails:
     s_emails = ''
     try:
-        service_call_ticket_id = get_service_call_ticket(s['id'])[0]["id"]
-        resources = get_service_call_resources(service_call_ticket_id)
-        resource_emails = []
-        for r in resources:
-            resource_emails.append(next(
-                item for item in all_resources if item["id"] == r["resourceID"])["email"])
-        s.update({"emails": resource_emails})
-        s_emails = result = ', '.join(s['emails'])
-    except Exception:
-        log_error(f"Error retrieving resource emails for service call: {s}")
+        tickets = get_service_call_ticket(s['id'])
+        if tickets:
+            service_call_ticket_id = tickets[0]["id"]
+            resources = get_service_call_resources(service_call_ticket_id)
+            resource_emails = []
+            for r in resources:
+                match = next(
+                    (item for item in all_resources if item["id"] == r["resourceID"]), None)
+                if match:
+                    resource_emails.append(match["email"])
+            s.update({"emails": resource_emails})
+            s_emails = ', '.join(s['emails'])
+    except Exception as e:
+        log_error(
+            f"Error retrieving resource emails for service call {s['id']}: {e}")
 
     # Add company
+    company = ''
     try:
-        company_id = get_company_data(s["companyID"])
-        company = company_id[0]['companyName']
-    except Exception:
-        company = ''
+        company_data = get_company_data(s["companyID"])
+        if company_data:
+            company = company_data[0]['companyName']
+    except Exception as e:
+        log_error(f"Error retrieving company for service call {s['id']}: {e}")
     s.update({"company": company})
 
     # Add location
-    location = get_company_location(s['companyLocationID'])
-    if len(location) > 0:
-        location = (
-            location[0]['address1'] + '\n' + location[0]['address2'] + '\n' +
-            location[0]['city'] + '\n' + location[0]['state'] +
-            '\n' + location[0]['postalCode']
-        )
-    else:
-        location = ''
+    location = ''
+    try:
+        location_data = get_company_location(s['companyLocationID'])
+        if len(location_data) > 0:
+            location = (
+                location_data[0]['address1'] + '\n' + location_data[0]['address2'] + '\n' +
+                location_data[0]['city'] + '\n' + location_data[0]['state'] +
+                '\n' + location_data[0]['postalCode']
+            )
+    except Exception as e:
+        log_error(f"Error retrieving location for service call {s['id']}: {e}")
 
     # Add ticket info
     ticket_ids = []
@@ -149,12 +169,15 @@ for s in new_and_updated:
         log_event(
             f"Added/updated service call to db:  {s['id']} {s['startDateTime']} {s['description']} {s['company']} {s_emails}"
         )
-    except Exception:
+    except Exception as e:
+        ticket_links = ' '.join(
+            line.strip() for line in ticketInfo.splitlines() if 'TicketID=' in line)
         log_error(
-            f"ERROR: Unable to add/update service call to db:  {s['id']} {s.get('startDateTime')} {s['description']} {s['company']} {s_emails}"
+            f"ERROR: Unable to add/update service call to db:  {s['id']} {s.get('startDateTime')} {s['description']} {s['company']} {s_emails} {ticket_links}: {e}"
         )
 
 # Compare to find service calls not in AutoTask (deleted), return a list of IDs
+missing_service_call_ids = []
 try:
     missing_service_call_ids = find_missing_ids(
         db_service_calls, at_service_calls)
@@ -188,7 +211,8 @@ for event in events_needing_gsync:
         db_id = event["id"]
         event_id = f'autotask{event["id"]}'
 
-        event_resources = ((event['resources']).split(', '))
+        event_resources = [e for e in (
+            event['resources'] or '').split(', ') if e]
         attendees = [{'email': email, 'responseStatus': 'accepted'}
                      for email in event_resources]
 
@@ -210,7 +234,9 @@ for event in events_needing_gsync:
             'attendees': attendees,
             'location': event['location'],
         }
-    except Exception:
+    except Exception as e:
+        log_error(
+            f"Error building Google event for service call {event.get('id')}: {e}")
         continue
 
     try:
@@ -224,8 +250,26 @@ for event in events_needing_gsync:
         except Exception as e:
             log_error(
                 f'Error marking service call {db_id} as synced in database: {e}')
-    except Exception:
-        log_error(f'Error syncing service call {db_id} to Google')
+    except Exception as e:
+        log_error(f'Error syncing service call {db_id} to Google: {e}')
+
+# ______________________ Delete from Google ______________________
+
+try:
+    events_needing_deletion = ServiceCall.get_rows_needing_deletion()
+except Exception as e:
+    log_error(f'Error retrieving events needing deletion from database: {e}')
+    events_needing_deletion = []
+
+for event in events_needing_deletion:
+    db_id = event["id"]
+    event_id = f'autotask{event["id"]}'
+    try:
+        if event_exists(event_id):
+            delete_event(event_id)
+        ServiceCall.delete(db_id)
+    except Exception as e:
+        log_error(f'Error deleting Google event for service call {db_id}: {e}')
 
 # ______________________ Clean DB ______________________
 
@@ -236,3 +280,5 @@ try:
     ServiceCall.delete_old_events(delete_date)
 except Exception as e:
     log_error(f"Error removing old service calls from database \n{e}")
+
+log_event("sync complete with errors" if has_errors() else "sync complete")

@@ -22,38 +22,39 @@ class ServiceCall:
     def save(self):
 
         conn = sqlite3.connect('data.db')
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        # Check if the row exists based on the call_id
-        cursor.execute(
-            "SELECT * FROM service_calls WHERE id = ?", (self.call_id,))
-        existing_row = cursor.fetchone()
+            # Check if the row exists based on the call_id
+            cursor.execute(
+                "SELECT * FROM service_calls WHERE id = ?", (self.call_id,))
+            existing_row = cursor.fetchone()
 
-        if existing_row is not None:
-            # Row exists, update the row with new data
-            cursor.execute('''UPDATE service_calls SET 
-                            startDateTime = ?,
-                            endDateTime = ?,
-                            lastModifiedDateTime = ?,
-                            description = ?,
-                            company = ?,
-                            location = ?,
-                            resources = ?,
-                            ticketInfo = ?,
-                            deleted = ?,
-                            needs_sync = ?
-                            WHERE id = ?''',
-                           (self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync, self.call_id))
-        else:
-            # Row does not exist, create a new row
-            cursor.execute('''INSERT INTO service_calls 
-                            (id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, ticketInfo, deleted, needs_sync)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                           (self.call_id, self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync))
+            if existing_row is not None:
+                # Row exists, update the row with new data
+                cursor.execute('''UPDATE service_calls SET
+                                startDateTime = ?,
+                                endDateTime = ?,
+                                lastModifiedDateTime = ?,
+                                description = ?,
+                                company = ?,
+                                location = ?,
+                                resources = ?,
+                                ticketInfo = ?,
+                                deleted = ?,
+                                needs_sync = ?
+                                WHERE id = ?''',
+                               (self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync, self.call_id))
+            else:
+                # Row does not exist, create a new row
+                cursor.execute('''INSERT INTO service_calls
+                                (id, startDateTime, endDateTime, lastModifiedDateTime, description, company, location, resources, ticketInfo, deleted, needs_sync)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                               (self.call_id, self.startDateTime, self.endDateTime, self.lastModifiedDateTime, self.description, self.company, self.location, self.resources, self.ticketInfo, self.deleted, self.needs_sync))
 
-        # Commit the changes and close the connection
-        conn.commit()
-        conn.close()
+            conn.commit()
+        finally:
+            conn.close()
 
     @staticmethod
     def get_rows_needing_sync():
@@ -135,58 +136,58 @@ class ServiceCall:
     @staticmethod
     def mark_as_deleted(ids, start_date, end_date):
         conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        # Flexible date parsing for arguments
-        start_date = extract_date(start_date)
-        end_date = extract_date(end_date)
+            # Flexible date parsing for arguments
+            start_date = extract_date(start_date)
+            end_date = extract_date(end_date)
 
-        for id in ids:
-            query = "SELECT id, startDateTime FROM service_calls WHERE id = ?"
-            cursor.execute(query, (id,))
-            rows = cursor.fetchall()
+            for id in ids:
+                query = "SELECT id, startDateTime FROM service_calls WHERE id = ?"
+                cursor.execute(query, (id,))
+                rows = cursor.fetchall()
 
-            for row_id, startDateTime in rows:
-                parsed_date = extract_date(startDateTime)
-                if start_date <= parsed_date <= end_date:
-                    update_query = "UPDATE service_calls SET deleted = 1, needs_sync = 1 WHERE id = ?"
-                    cursor.execute(update_query, (row_id,))
-                    log_event(f"{id} marked as deleted in DB")
+                for row_id, startDateTime in rows:
+                    parsed_date = extract_date(startDateTime)
+                    if start_date <= parsed_date <= end_date:
+                        update_query = "UPDATE service_calls SET deleted = 1, needs_sync = 1 WHERE id = ?"
+                        cursor.execute(update_query, (row_id,))
+                        log_event(f"{id} marked as deleted in DB")
 
-        conn.commit()
-        conn.close()
+            conn.commit()
+        finally:
+            conn.close()
 
     @staticmethod
     def delete(id):
         conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM service_calls WHERE id=?", (id,))
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM service_calls WHERE id=?", (id,))
+            conn.commit()
+        finally:
+            conn.close()
 
     @staticmethod
     def mark_as_synced(id):
         conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
-
-        update_query = "UPDATE service_calls SET needs_sync = 0 WHERE id = ?"
-        cursor.execute(update_query, (id,))
-
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            update_query = "UPDATE service_calls SET needs_sync = 0 WHERE id = ?"
+            cursor.execute(update_query, (id,))
+            conn.commit()
+        finally:
+            conn.close()
 
     @staticmethod
     def delete_old_events(specified_date):
         conn = sqlite3.connect("data.db")
-        cursor = conn.cursor()
-
-        # Convert the specified_date to a string in "%Y-%m-%d" format
-        specified_date_str = specified_date.strftime("%Y-%m-%d")
-
-        # Delete events with end_date older than the specified date
-        delete_query = "DELETE FROM service_calls WHERE endDateTime < ?"
-        cursor.execute(delete_query, (specified_date_str,))
-
-        conn.commit()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            specified_date_str = specified_date.strftime("%Y-%m-%d")
+            delete_query = "DELETE FROM service_calls WHERE endDateTime < ?"
+            cursor.execute(delete_query, (specified_date_str,))
+            conn.commit()
+        finally:
+            conn.close()

@@ -21,7 +21,7 @@ def add_event(event_body):
         event = service.events().insert(calendarId='primary', body=event_body).execute()
         log_event(f'Google Event created: {event.get("htmlLink")}')
     except Exception as e:
-        log_error(f'Error adding Google Event: {event_body[id]}: {e}')
+        log_error(f'Error adding Google Event: {event_body["id"]}: {e}')
 
 
 def modify_event(event_body):
@@ -30,29 +30,31 @@ def modify_event(event_body):
                                        eventId=event_body['id'], body=event_body).execute()
         log_event(f'Google Event modified: {event.get("htmlLink")}')
     except Exception as e:
-        log_error(f'Error modifying Google Event: {event_body[id]}: {e}')
-
-
-def delete_event(event_id):
-    try:
-        event = service.events().delete(calendarId='primary',
-                                        eventId=event_id).execute()
-        log_event(f'Google Event deleted: {event_id}')
-    except Exception as e:
-        log_error(f'Error deleting Google Event: {event_id}: {e}')
+        log_error(f'Error modifying Google Event: {event_body["id"]}: {e}')
 
 
 def event_exists(event_id):
     try:
-        event = service.events().get(calendarId='primary', eventId=event_id).execute()
+        service.events().get(calendarId='primary', eventId=event_id).execute()
         return True
-    except:
-        return False
+    except HttpError as e:
+        if e.resp.status in (404, 410):
+            return False
+        log_error(f'Google API error checking if event {event_id} exists: {e}')
+        raise
+    except Exception as e:
+        log_error(f'Unexpected error checking if event {event_id} exists: {e}')
+        raise
 
 
 def delete_event(event_id):
     try:
         service.events().delete(calendarId='primary', eventId=event_id).execute()
-        log_event(f'Event with ID {event_id} has been deleted.')
+        log_event(f'Google Event deleted: {event_id}')
+    except HttpError as e:
+        if e.resp.status == 410:
+            log_event(f'Google Event {event_id} already deleted, skipping')
+        else:
+            log_error(f'Error deleting Google Event {event_id}: {e}')
     except Exception as e:
-        log_error(f'An error occurred while deleting the event: {e}')
+        log_error(f'Error deleting Google Event {event_id}: {e}')
